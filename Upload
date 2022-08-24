@@ -1,0 +1,84 @@
+import 'dart:io';
+import 'package:arib_admin/components/utils.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+
+class Books_App extends StatefulWidget {
+  const Books_App({Key? key}) : super(key: key);
+
+  @override
+  State<Books_App> createState() => _Books_AppState();
+}
+
+class _Books_AppState extends State<Books_App> {
+  TextEditingController first = new TextEditingController();
+  TextEditingController firsttwo = new TextEditingController();
+
+  PlatformFile? pickedFile;
+  late UploadTask uploadTask;
+  late String urlDownload;
+
+  Future uploadFile() async {
+    final path = 'BooksApp/${pickedFile!.name}';
+    final file = File(pickedFile!.path!);
+
+    final ref = FirebaseStorage.instance.ref().child(path);
+    uploadTask = ref.putFile(file);
+
+    final snapshot = await uploadTask.whenComplete(() {});
+
+    urlDownload = await snapshot.ref.getDownloadURL();
+    print('downLoad Like: $urlDownload');
+
+    Map<String, dynamic> date = {
+      "BookTitle": first.text,
+      "BookDescription": firsttwo.text,
+      "ImageUrl": urlDownload
+    };
+    FirebaseFirestore.instance.collection("BooksApp").add(date);
+  }
+
+  Future selectFile() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null) return;
+
+    setState(() {
+      pickedFile = result.files.first;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        body: Center(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+
+            ElevatedButton(
+              child: const Text('Select File'),
+              onPressed: selectFile,
+            ), // ElevatedButton
+            const SizedBox(height: 32),
+            ElevatedButton(
+              child: const Text('Upload File'),
+              onPressed: uploadFile,
+            ),
+            TextFormField(
+              controller: first,
+              decoration: InputDecoration(hintText: "Text Here"),
+            ),
+            TextFormField(
+              controller: firsttwo,
+              decoration: InputDecoration(hintText: "Text Here there"),
+            ),
+            ElevatedButton(
+                child: const Text('Upload File'),
+                onPressed: () {
+                  uploadFile();
+                }),
+          ]),
+        ));
+  }
+}
